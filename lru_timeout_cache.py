@@ -24,9 +24,15 @@ class LRUTimeoutCache:
         return item
 
     def put_item(self, key, item):
+        if key in self.cache:
+            existing_item = self.cache[key]
+            existing_item.__timer.cancel()
+            del existing_item.__timer
+
         self.update_timer(item, key)
         self.cache[key] = item
         self.cache.move_to_end(key)
+
         if len(self.cache) > self.maxSize:
             removed_item = self.cache.popitem(last=False)
             removed_item.__timer.cancel()
