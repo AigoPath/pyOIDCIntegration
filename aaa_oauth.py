@@ -12,7 +12,7 @@ from fastapi.openapi.models import OAuthFlowAuthorizationCode, OAuthFlows
 from . import Auth
 from .lru_timeout_cache import LRUTimeoutCache
 
-class AuthSettings(BaseSettings):
+class OAuthSettings(BaseSettings):
     idp_url: str
     audience: str
     refresh_interval: int = 300  # seconds
@@ -43,7 +43,7 @@ class Payload(BaseModel):
     request: Any = None
 
 
-def make_oauth2_wrapper(auth: Auth, auth_settings: AuthSettings):
+def make_oauth2_wrapper(auth: Auth, auth_settings: OAuthSettings):
     oauth2_scheme = OAuth2(
         flows=OAuthFlows(
             authorizationCode=OAuthFlowAuthorizationCode(
@@ -82,7 +82,7 @@ class OAuthIntegration:
      Otherwise, user info is retrieved and cached from the given url using the token payload (method GET).
      The data can be simply retrieved as await get_user_info(auth_payload)
     """
-    def __init__(self, settings, logger=None, auth_settings=AuthSettings, headers=None):
+    def __init__(self, settings, logger=None, auth_settings=OAuthSettings, headers=None):
         self.headers = {} if headers is None else headers
         self.settings = settings
         self.logger = logger if logger is not None else LoggerNoLog()
