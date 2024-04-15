@@ -53,11 +53,9 @@ def make_oauth2_wrapper(auth: Auth, auth_settings: AuthSettings):
 
 
 class OAuthIntegration:
-    def __init__(self, settings, logger, http_client):
+    def __init__(self, settings, logger=None):
         self.settings = settings
         self.logger = logger
-        self.http_client = http_client
-
         self.auth_settings = AuthSettings()
 
         self.auth = Auth(
