@@ -5,7 +5,7 @@ import aiohttp
 from typing import Any
 
 from pydantic import BaseModel
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2
 from fastapi.openapi.models import OAuthFlowAuthorizationCode, OAuthFlows
