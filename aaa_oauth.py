@@ -12,6 +12,7 @@ from fastapi.openapi.models import OAuthFlowAuthorizationCode, OAuthFlows
 from . import Auth
 from .lru_timeout_cache import LRUTimeoutCache
 
+
 class OAuthSettings(BaseSettings):
     idp_url: str
     audience: str
@@ -25,7 +26,10 @@ class OAuthSettings(BaseSettings):
     user_cache_size: int = 999
     user_info_endpoint: str = ""  # Url to the user info data, e.g. 'https://login.bbmri-eric.eu/oidc/userinfo'
 
-    model_config = SettingsConfigDict(env_prefix="wbs_", env_file=".env")
+    model_config: SettingsConfigDict = None
+
+    def __init__(self, env_prefix="oauth_", env_file=".env"):
+        self.model_config = SettingsConfigDict(env_prefix=env_prefix, env_file=env_file)
 
 
 class BaseJwtTokenModel(BaseModel):
@@ -82,6 +86,7 @@ class OAuthIntegration:
      Otherwise, user info is retrieved and cached from the given url using the token payload (method GET).
      The data can be simply retrieved as await get_user_info(auth_payload)
     """
+
     def __init__(self, settings, logger=None, auth_settings=OAuthSettings, headers=None):
         self.headers = {} if headers is None else headers
         self.settings = settings
@@ -102,6 +107,22 @@ class OAuthIntegration:
     def global_depends(self):
         return Depends(self.oauth2_wrapper)
 
+    async def fetch_user_info(self, auth_payload) -> str:
+        """
+        Override this method to change how the user info is fetched
+        """
+        headers = copy.copy(self.headers)
+        headers['Authorization'] = f"Bearer {auth_payload.payload}"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(self.auth_settings.user_info_endpoint, headers=headers) as response:
+                return await response.text()
+
+    def parse_user_info(self, data: str):
+        """
+        Override this method to change how the user info is parsed from a string response
+        """
+        return data
+
     async def get_user_info(self, auth_payload: TokenPayload):
         if not auth_payload.data.sub:
             raise HTTPException(status_code=401, detail="Auth payload does not contain 'sub' subject ID!")
@@ -110,10 +131,6 @@ class OAuthIntegration:
 
         user_info = self.user_cache.get_item(auth_payload.data.sub)
         if not user_info:
-            headers = copy.copy(self.headers)
-            headers['Authorization'] = f"Bearer {auth_payload.payload}"
-            async with aiohttp.ClientSession() as session:
-                async with session.get(self.auth_settings.user_info_endpoint, headers=headers) as response:
-                    user_info = await response.text()
-                    self.user_cache.put_item(auth_payload.data.sub, user_info)
+            user_info = self.parse_user_info(await self.fetch_user_info(auth_payload))
+            self.user_cache.put_item(auth_payload.data.sub, user_info)
         return user_info
