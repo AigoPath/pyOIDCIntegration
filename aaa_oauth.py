@@ -1,4 +1,5 @@
 import copy
+import inspect
 
 import aiohttp
 from typing import Any
@@ -80,7 +81,8 @@ class OAuthIntegration:
     OAuth Integration:
      - provide global app settings to store in the integration for internal use
      - provide logger for issue logging
-     - provide auth_settings class to instantiate for oauth flow (note: must inherit from AuthSettings)
+     - provide auth_settings class to instantiate for oauth flow  or an instance of the settings object
+            (note: must inherit from AuthSettings)
 
      If no user_info_endpoint endpoint is configured, the module returns the auth payload.
      Otherwise, user info is retrieved and cached from the given url using the token payload (method GET).
@@ -91,7 +93,9 @@ class OAuthIntegration:
         self.headers = {} if headers is None else headers
         self.settings = settings
         self.logger = logger if logger is not None else LoggerNoLog()
-        self.auth_settings = auth_settings()
+        self.auth_settings = auth_settings() if inspect.isclass(auth_settings) else auth_settings
+        if not isinstance(self.auth_settings, OAuthSettings):
+            raise HTTPException(status_code=500, detail="OAuth Settings must be a subclass of OAuthSettings class!")
 
         self.auth = Auth(
             idp_url=self.auth_settings.idp_url.rstrip("/"),
