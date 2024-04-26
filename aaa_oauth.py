@@ -30,7 +30,7 @@ class OAuthSettings(BaseSettings):
 
 class BaseJwtTokenModel(BaseModel):
     sub: str
-    exp: str
+    exp: int
 
 
 class TokenPayload(BaseModel):
