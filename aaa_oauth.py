@@ -106,12 +106,12 @@ class OAuthIntegration:
     def global_depends(self):
         return Depends(self.oauth2_wrapper)
 
-    async def fetch_user_info(self, auth_payload) -> str:
+    async def fetch_user_info(self, auth_payload: Payload) -> str:
         """
         Override this method to change how the user info is fetched
         """
         headers = copy.copy(self.headers)
-        headers['Authorization'] = f"Bearer {auth_payload.payload}"
+        headers['Authorization'] = f"Bearer {auth_payload.token.payload}"
         async with aiohttp.ClientSession() as session:
             async with session.get(self.auth_settings.user_info_endpoint, headers=headers) as response:
                 return await response.text()
@@ -122,14 +122,15 @@ class OAuthIntegration:
         """
         return data
 
-    async def get_user_info(self, auth_payload: TokenPayload):
-        if not auth_payload.data.sub:
+    async def get_user_info(self, auth_payload: Payload):
+        token = auth_payload.token.data
+        if not token.sub:
             raise HTTPException(status_code=401, detail="Auth payload does not contain 'sub' subject ID!")
         if not self.auth_settings.user_info_endpoint:
             return auth_payload
 
-        user_info = self.user_cache.get_item(auth_payload.data.sub)
+        user_info = self.user_cache.get_item(token.sub)
         if not user_info:
             user_info = self.parse_user_info(await self.fetch_user_info(auth_payload))
-            self.user_cache.put_item(auth_payload.data.sub, user_info)
+            self.user_cache.put_item(token.sub, user_info)
         return user_info
