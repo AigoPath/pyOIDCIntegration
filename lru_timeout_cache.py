@@ -26,8 +26,8 @@ class LRUTimeoutCache:
     def put_item(self, key, item):
         if key in self.cache:
             existing_item = self.cache[key]
-            existing_item.__timer.cancel()
-            del existing_item.__timer
+            existing_item["__timer"].cancel()
+            del existing_item["__timer"]
 
         self.update_timer(item, key)
         self.cache[key] = item
@@ -35,14 +35,14 @@ class LRUTimeoutCache:
 
         if len(self.cache) > self.maxSize:
             removed_item = self.cache.popitem(last=False)
-            removed_item.__timer.cancel()
-            del removed_item.__timer
+            removed_item["__timer"].cancel()
+            removed_item["__timer"] = None
             return removed_item
 
     def update_timer(self, item, key):
-        if item.__timer is not None:
-            item.__timer.cancel()
-        item.__timer = self.event_loop.call_later(self.timeout, self._delete_outdated,key)
+        if item["__timer"] is not None:
+            item["__timer"].cancel()
+        item["__timer"] = self.event_loop.call_later(self.timeout, self._delete_outdated,key)
 
     def _delete_outdated(self, key):
         del self.cache[key]
