@@ -40,8 +40,9 @@ class LRUTimeoutCache:
             return removed_item
 
     def update_timer(self, item, key):
-        if item["__timer"] is not None:
-            item["__timer"].cancel()
+        timer = item.get("__timer", None)
+        if timer is not None:
+            timer.cancel()
         item["__timer"] = self.event_loop.call_later(self.timeout, self._delete_outdated,key)
 
     def _delete_outdated(self, key):
