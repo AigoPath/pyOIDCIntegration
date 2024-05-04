@@ -20,33 +20,41 @@ class LRUTimeoutCache:
             return None
         self.cache.move_to_end(key)
         item = self.cache[key]
-        self.update_timer(item, key)
-        return item
+        self._update_timer(item, key)
+        return item.data
 
     def put_item(self, key, item):
         if key in self.cache:
             existing_item = self.cache[key]
-            existing_item["__timer"].cancel()
-            del existing_item["__timer"]
+            existing_item["timer"].cancel()
+            existing_item["timer"] = None
 
-        self.update_timer(item, key)
+        item = {
+            "timer": None,
+            "data": item
+        }
+
+        self._update_timer(item, key)
         self.cache[key] = item
         self.cache.move_to_end(key)
 
         if len(self.cache) > self.maxSize:
             removed_item = self.cache.popitem(last=False)
-            removed_item["__timer"].cancel()
-            removed_item["__timer"] = None
-            return removed_item
+            removed_item["timer"].cancel()
+            removed_item["timer"] = None
+            return removed_item.data
 
-    def update_timer(self, item, key):
-        timer = item.get("__timer", None)
+    def _update_timer(self, item, key):
+        timer = item["timer"]
         if timer is not None:
             timer.cancel()
-        item["__timer"] = self.event_loop.call_later(self.timeout, self._delete_outdated,key)
+        item["timer"] = self.event_loop.call_later(self.timeout, self._delete_outdated,key)
 
     def _delete_outdated(self, key):
         del self.cache[key]
 
-    def pop_item(self, key):
-        return self.cache.pop(key)
+    def pop_item(self):
+        removed_item = self.cache.popitem(last=True)
+        removed_item["timer"].cancel()
+        removed_item["timer"] = None
+        return removed_item.data
