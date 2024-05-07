@@ -112,7 +112,7 @@ class OAuthIntegration:
         """
         headers = copy.copy(self.headers)
         token = auth_payload.token.payload
-        headers['Authorization'] = f"Bearer {token}" if token.startswith("Bearer") else token
+        headers['Authorization'] = f"Bearer {token}" if not token.startswith("Bearer") else token
         async with aiohttp.ClientSession() as session:
             async with session.get(self.auth_settings.user_info_endpoint, headers=headers) as response:
                 return await response.text()
