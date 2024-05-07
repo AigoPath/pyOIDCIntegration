@@ -111,7 +111,8 @@ class OAuthIntegration:
         Override this method to change how the user info is fetched
         """
         headers = copy.copy(self.headers)
-        headers['Authorization'] = f"Bearer {auth_payload.token.payload}"
+        token = auth_payload.token.payload
+        headers['Authorization'] = f"Bearer {token}" if token.startswith("Bearer") else token
         async with aiohttp.ClientSession() as session:
             async with session.get(self.auth_settings.user_info_endpoint, headers=headers) as response:
                 return await response.text()
