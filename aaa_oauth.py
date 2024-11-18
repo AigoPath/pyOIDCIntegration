@@ -21,6 +21,7 @@ class OAuthSettings(BaseSettings):
     openapi_token_url: str = ""
     openapi_auth_url: str = ""
     rewrite_url_in_wellknown: str = ""
+    check_acr_values: str = None
 
     # Authorization Data Caching
     user_cache_timeout: int = 1800
@@ -96,6 +97,7 @@ class OAuthIntegration:
             idp_url=self.auth_settings.idp_url.rstrip("/"),
             refresh_interval=self.auth_settings.refresh_interval,
             audience=self.auth_settings.audience,
+            acr_values=self.auth_settings.check_acr_values,
             logger=self.logger,
             rewrite_url_in_wellknown=self.auth_settings.rewrite_url_in_wellknown,
         )

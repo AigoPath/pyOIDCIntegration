@@ -11,10 +11,11 @@ from fastapi import Depends, HTTPException, Request, status
 
 class Auth:
     def __init__(
-        self, idp_url: str, refresh_interval: int, audience: str, logger: Logger, rewrite_url_in_wellknown: str = None
+        self, idp_url: str, refresh_interval: int, audience: str, acr_values: str, logger: Logger, rewrite_url_in_wellknown: str = None
     ):
         self.idp_url = idp_url.rstrip("/")
         self.refresh_interval = refresh_interval
+        self.acr_values = acr_values
         self.audience = audience
         self.logger = logger
         self.rewrite_url_in_wellknown = (
@@ -147,6 +148,10 @@ class Auth:
                 issuer=self._issuer,
                 options=options,
             )
+
+            if self.acr_values and decoded_token["acr"] != self.acr_values:
+                raise HTTPException(status_code=401, detail="Authentication requires valid ACR.")
+
             return decoded_token
         except jwt.exceptions.ExpiredSignatureError as e:
             raise HTTPException(status_code=401, detail="Access Token expired.") from e
