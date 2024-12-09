@@ -2,7 +2,7 @@ import copy
 import inspect
 
 import aiohttp
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
@@ -21,7 +21,7 @@ class OAuthSettings(BaseSettings):
     openapi_token_url: str = ""
     openapi_auth_url: str = ""
     rewrite_url_in_wellknown: str = ""
-    check_acr_values: str = None
+    check_acr_values: Optional[str] = None
 
     # Authorization Data Caching
     user_cache_timeout: int = 1800
