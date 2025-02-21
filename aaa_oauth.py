@@ -2,13 +2,15 @@ import copy
 import inspect
 
 import aiohttp
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2
 from fastapi.openapi.models import OAuthFlowAuthorizationCode, OAuthFlows
+
+from workbench_service.api.v3.custom_models.groups import Group
 
 from . import Auth
 from .lru_timeout_cache import LRUTimeoutCache
@@ -21,7 +23,7 @@ class OAuthSettings(BaseSettings):
     openapi_token_url: str = ""
     openapi_auth_url: str = ""
     rewrite_url_in_wellknown: str = ""
-    check_acr_values: Optional[str] = None
+    check_acr_values: str = ""
 
     # Authorization Data Caching
     user_cache_timeout: int = 1800
@@ -32,6 +34,7 @@ class OAuthSettings(BaseSettings):
 class BaseJwtTokenModel(BaseModel):
     sub: str
     exp: int
+    groups: list[str]
 
 
 class TokenPayload(BaseModel):
@@ -125,6 +128,29 @@ class OAuthIntegration:
         """
         return data
 
+    def parse_user_groups(self, auth_payload: Payload) -> list[Group]:
+        token = auth_payload.token.data
+        if not token.groups:
+            raise HTTPException(status_code=401, detail="Missing 'groups' claim in JWT token")
+        if len(token.groups) == 0:
+            raise HTTPException(status_code=401, detail="Zero 'groups' assigned to this user")
+
+        parsed_groups = []
+
+        for group in token.groups:
+            parts = group.strip("/").split("/")
+            if len(parts) == 1:
+                hierarchy = Group(project=parts[0])
+            elif len(parts) == 2:
+                hierarchy = Group(project=parts[0], institution=parts[1])
+            elif len(parts) == 3:
+                hierarchy = Group(project=parts[0], institution=parts[1], rights=parts[2])
+            else:
+                raise HTTPException(status_code=500, detail="Invalid groups settings")
+            parsed_groups.append(hierarchy)
+
+        return parsed_groups
+
     async def get_user_info(self, auth_payload: Payload):
         token = auth_payload.token.data
         if not token.sub:
@@ -137,3 +163,8 @@ class OAuthIntegration:
             user_info = self.parse_user_info(await self.fetch_user_info(auth_payload))
             self.user_cache.put_item(token.sub, user_info)
         return user_info
+
+    async def get_user_info_with_groups(self, auth_payload: Payload):
+        user_info = await self.get_user_info(auth_payload)
+        user_groups = self.parse_user_groups(auth_payload)
+        return {"user_info": user_info, "groups": user_groups}
