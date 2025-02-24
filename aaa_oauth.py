@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings
-from fastapi import Depends, HTTPException, status, Request
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import OAuth2
 from fastapi.openapi.models import OAuthFlowAuthorizationCode, OAuthFlows
 
@@ -128,30 +128,7 @@ class OAuthIntegration:
         """
         return data
 
-    def parse_user_groups(self, auth_payload: Payload) -> list[Group]:
-        token = auth_payload.token.data
-        if not token.groups:
-            raise HTTPException(status_code=401, detail="Missing 'groups' claim in JWT token")
-        if len(token.groups) == 0:
-            raise HTTPException(status_code=401, detail="Zero 'groups' assigned to this user")
-
-        parsed_groups = []
-
-        for group in token.groups:
-            parts = group.strip("/").split("/")
-            if len(parts) == 1:
-                hierarchy = Group(project=parts[0])
-            elif len(parts) == 2:
-                hierarchy = Group(project=parts[0], institution=parts[1])
-            elif len(parts) == 3:
-                hierarchy = Group(project=parts[0], institution=parts[1], rights=parts[2])
-            else:
-                raise HTTPException(status_code=500, detail="Invalid groups settings")
-            parsed_groups.append(hierarchy)
-
-        return parsed_groups
-
-    async def get_user_info(self, auth_payload: Payload):
+    async def get_user_info(self, auth_payload: Payload) -> Payload:
         token = auth_payload.token.data
         if not token.sub:
             raise HTTPException(status_code=401, detail="Auth payload does not contain 'sub' subject ID!")
@@ -163,8 +140,3 @@ class OAuthIntegration:
             user_info = self.parse_user_info(await self.fetch_user_info(auth_payload))
             self.user_cache.put_item(token.sub, user_info)
         return user_info
-
-    async def get_user_info_with_groups(self, auth_payload: Payload):
-        user_info = await self.get_user_info(auth_payload)
-        user_groups = self.parse_user_groups(auth_payload)
-        return {"user_info": user_info, "groups": user_groups}
