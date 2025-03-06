@@ -4,11 +4,12 @@ import inspect
 import aiohttp
 from typing import Any, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
-from fastapi import Depends, HTTPException, status, Request
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import OAuth2
 from fastapi.openapi.models import OAuthFlowAuthorizationCode, OAuthFlows
+
 
 from . import Auth
 from .lru_timeout_cache import LRUTimeoutCache
@@ -32,6 +33,7 @@ class OAuthSettings(BaseSettings):
 class BaseJwtTokenModel(BaseModel):
     sub: str
     exp: int
+    groups: list[str] = Field(default_factory=list)
 
 
 class TokenPayload(BaseModel):
