@@ -127,7 +127,7 @@ class OAuthIntegration:
         """
         return data
 
-    async def get_user_info(self, auth_payload: Payload) -> Payload:
+    async def get_user_info(self, auth_payload: Payload):
         token = auth_payload.token.data
         if not token.sub:
             raise HTTPException(status_code=401, detail="Auth payload does not contain 'sub' subject ID!")
