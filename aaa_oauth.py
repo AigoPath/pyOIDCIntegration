@@ -32,6 +32,8 @@ class OAuthSettings(BaseSettings):
 
 class BaseJwtTokenModel(BaseModel):
     sub: str
+    given_name: str
+    family_name: str
     exp: int
     groups: list[str] = Field(default_factory=list)
 
