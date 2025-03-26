@@ -57,7 +57,7 @@ def make_oauth2_wrapper(auth: Auth, auth_settings: OAuthSettings):
 
     def oauth2_wrapper(request: Request, token=Depends(oauth2_scheme)):
         decoded_token = auth.decode_token(token)
-        token_payload = TokenPayload(payload=token, data=decoded_token)
+        token_payload = TokenPayload(payload=token, data=decoded_token, raw_data=decoded_token)
         return Payload(token=token_payload, request=request)
 
     return oauth2_wrapper
