@@ -1,8 +1,8 @@
 import copy
 import inspect
+from typing import Any, Literal, Optional
 
 import aiohttp
-from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
@@ -114,12 +114,7 @@ class OAuthIntegration:
         """
         Override this method to change how the user info is fetched
         """
-        headers = copy.copy(self.headers)
-        token = auth_payload.token.payload
-        headers['Authorization'] = f"Bearer {token}" if not token.startswith("Bearer") else token
-        async with aiohttp.ClientSession() as session:
-            async with session.get(self.auth_settings.user_info_endpoint, headers=headers) as response:
-                return await response.text()
+        return await self.fetch(self.auth_settings.user_info_endpoint, "GET", auth_payload)
 
     def parse_user_info(self, data: str):
         """
@@ -139,3 +134,37 @@ class OAuthIntegration:
             user_info = self.parse_user_info(await self.fetch_user_info(auth_payload))
             self.user_cache.put_item(token.sub, user_info)
         return user_info
+
+    def build_request_headers(self, auth_payload: Payload) -> dict[str, str]:
+        """Build Authorization header from payload, preserving existing headers. Used in fetch(...)"""
+        headers = copy.copy(self.headers)
+        token = auth_payload.token.payload
+        headers["Authorization"] = (
+            f"Bearer {token}" if not token.startswith("Bearer") else token
+        )
+        return headers
+
+    async def fetch(
+        self,
+        url: str,
+        method: Literal["GET", "POST"],
+        auth_payload: Payload | None = None,
+        data: Any | None = None,
+        headers: dict | None = None,
+    ) -> str:
+        """
+        Low-level helper that performs the actual HTTP request
+        """
+        if not headers:
+            if not auth_payload:
+                raise ValueError("No auth payload provided when headers are not provided")
+            headers = self.build_request_headers(auth_payload)
+
+        async with aiohttp.ClientSession() as session:
+            async with session.request(
+                method,
+                url,
+                headers=headers,
+                json=data if method == "POST" and data is not None else None,
+            ) as response:
+                return await response.text()
